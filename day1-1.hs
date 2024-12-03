@@ -14,6 +14,6 @@ parseLine :: [String] -> (Int,Int)
 parseLine [s1,s2] = (read s1, read s2)
 
 main = do
-    contents <- readFile "inputs/day1-1.txt"
+    contents <- readFile "inputs/day1.txt"
     let (l1,l2) = unzip [parseLine $ splitOn "   " s | s <- lines contents]
     print $ sumDists $ sortLists l1 l2
