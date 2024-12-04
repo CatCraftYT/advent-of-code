@@ -1,21 +1,16 @@
 import Data.List (inits, tails, isSuffixOf, isPrefixOf, isInfixOf)
-import Data.List (intercalate)
 import Text.Regex.TDFA
 
 getValidSegments :: String -> [String]
---getValidSegments str = filter (not.containsWithin "don't()") segmentsWithDupes
-getValidSegments str = dontSegments
-    where endings = filter ("don't()" `isSuffixOf`) $ inits str
-          dontSegments = head endings : tail [head $ filter ("don't()" `isPrefixOf`) $ tails substr | substr <- endings]
-          segmentsWithDupes = [head $ filter ("do()" `isPrefixOf`) $ tails substr | substr <- dontSegments]
+getValidSegments str = reverse.removePrecedingSubstrings $ reverse segmentsWithDupes
+    where starts = filter ("do()" `isPrefixOf`) $ tails str
+          segmentsWithDupes = [head $ filter ("don't()" `isSuffixOf`) $ inits substr | substr <- starts]
 
--- Will match strings that start with the search string but it doesn't matter
--- because in this case the strings always start with 'do()'
-containsWithin :: String -> String -> Bool
-containsWithin search str
-    | length str < length search = False
-    | search `isPrefixOf` str && str /= search = True
-    | otherwise = containsWithin search $ tail str
+removePrecedingSubstrings :: [String] -> [String]
+removePrecedingSubstrings [x] = [x]
+removePrecedingSubstrings (x:xs)
+    | any (x `isInfixOf`) xs = removePrecedingSubstrings xs
+    | otherwise = x : removePrecedingSubstrings xs
 
 addValidityMarkers :: String -> String
 addValidityMarkers s = "do()" ++ s ++ "don't()"
@@ -32,6 +27,5 @@ sumMulPairs xs = sum [read (head x) * read (last x) | x <- xs]
 ----
 
 main = do
-    contents <- readFile "inputs/day3-test.txt"
+    contents <- readFile "inputs/day3.txt"
     print $ sumMulPairs.getMulPairs.preprocessString $ contents
-    putStrLn $ intercalate "\n\n" . getValidSegments.addValidityMarkers $ contents
