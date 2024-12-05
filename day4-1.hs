@@ -1,4 +1,4 @@
-import Data.List.Extra ( transpose, (!?), isInfixOf )
+import Data.List.Extra ( transpose, (!?), isPrefixOf )
 import Data.Maybe ( catMaybes )
 
 getRows :: [String] -> [String]
@@ -22,12 +22,20 @@ getRightDiagonals m = [(reverse.catMaybes) [m !! row !? (col - row) | row <- row
 getAllDirections :: [String] -> [String]
 getAllDirections m = getRows m ++ getCols m ++ getLeftDiagonals m ++ getRightDiagonals m
 
-filterWordInstances :: String -> [String] -> [String]
-filterWordInstances word words = matches ++ backwardsMatches
-    where matches = filter (word `isInfixOf`) words
-          backwardsMatches = filter (reverse word `isInfixOf`) words
+countWords :: String -> String -> Int
+countWords word s
+    | length s < length word = 0
+    | word `isPrefixOf` s = 1 + countWords word (tail s)
+    | otherwise = countWords word (tail s)
+
+countWordInstances :: String -> [String] -> Int
+countWordInstances word words = sum $ countWordInstances' word words
+    where countWordInstances' :: String -> [String] -> [Int]
+          countWordInstances' _ [] = []
+          countWordInstances' word (s:words) = (count + backwardsCount) : countWordInstances' word words
+            where count = countWords word s
+                  backwardsCount = countWords (reverse word) s
 
 main = do
     contents <- lines <$> readFile "inputs/day4.txt"
-    print $ (length . filterWordInstances "XMAS" . getAllDirections) contents
-    print $ (filterWordInstances "XMAS" . getAllDirections) contents
+    print $ (countWordInstances "XMAS" . getAllDirections) contents
