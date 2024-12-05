@@ -29,12 +29,7 @@ countWords word s
     | otherwise = countWords word (tail s)
 
 countWordInstances :: String -> [String] -> Int
-countWordInstances word words = sum $ countWordInstances' word words
-    where countWordInstances' :: String -> [String] -> [Int]
-          countWordInstances' _ [] = []
-          countWordInstances' word (s:words) = (count + backwardsCount) : countWordInstances' word words
-            where count = countWords word s
-                  backwardsCount = countWords (reverse word) s
+countWordInstances word words = sum [countWords word s + countWords (reverse word) s | s <- words]
 
 main = do
     contents <- lines <$> readFile "inputs/day4.txt"
