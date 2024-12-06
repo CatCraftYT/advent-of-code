@@ -7,9 +7,6 @@ padStrings strs = [(concat.replicate n) " " ++ s | (n,s) <- zip [0..] strs]
 padStringsReverse :: [String] -> [String]
 padStringsReverse = reverse . (padStrings.reverse)
 
-removePadding :: String -> String
-removePadding = filter (/=head " ")
-
 -- Why fmap doesn't work (properly) on tuples will forever be a mystery...
 map2Tuple :: (a -> b) -> (a,a) -> (b,b)
 map2Tuple f (a1, a2) = (f a1, f a2)
@@ -21,7 +18,7 @@ equalsIncludingReverse a b
     | otherwise = False
 
 countCrosses :: [String] -> Int
-countCrosses strs = length . filter predicate $ map (map2Tuple removePadding) crossPairs
+countCrosses strs = length . filter predicate $ crossPairs
     where windows = [take (length "MAS") s | s <- tails strs]
           crossPairs = concatMap (\w -> zip (transpose $ padStrings w) (transpose $ padStringsReverse w)) windows
           predicate (a,b) = a `equalsIncludingReverse` "MAS" && b `equalsIncludingReverse` "MAS"
