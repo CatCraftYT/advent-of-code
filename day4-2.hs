@@ -1,47 +1,31 @@
 import Data.List.Extra ( transpose, (!?), isPrefixOf, isInfixOf, tails)
 import Data.Maybe ( catMaybes, isNothing, fromJust )
 
-getLeftDiagonals :: [String] -> [String]
-getLeftDiagonals m = [catMaybes [m !! i !? (i + offset) | i <- rows] | offset <- offsets]
-    where rows = [0..length m - 1]
-          offsets = [(negate.length) m + 1 .. (length.head) m - 1]
+padStrings :: [String] -> [String]
+padStrings strs = [(concat.replicate n) " " ++ s | (n,s) <- zip [0..] strs]
 
-getRightDiagonals :: [String] -> [String]
-getRightDiagonals m = [catMaybes [m !! row !? (col - row) | row <- rows] | col <- cols]
-    where nRows = length m - 1
-          nCols = (length.head) m - 1
-          rows = [0..nRows]
-          cols = [0..nRows + nCols]
+padStringsReverse :: [String] -> [String]
+padStringsReverse = reverse . (padStrings.reverse)
 
-getDiagDirections :: [String] -> [String]
-getDiagDirections m = getLeftDiagonals m ++ getRightDiagonals m
+removePadding :: String -> String
+removePadding = filter (/=head " ")
 
-countWords :: String -> String -> Int
-countWords word s
-    | length s < length word = 0
-    | word `isPrefixOf` s = 1 + countWords word (tail s)
-    | otherwise = countWords word (tail s)
+-- Why fmap doesn't work (properly) on tuples will forever be a mystery...
+map2Tuple :: (a -> b) -> (a,a) -> (b,b)
+map2Tuple f (a1, a2) = (f a1, f a2)
 
-getAllCombinations :: [a] -> [a] -> [(a,a)]
-getAllCombinations a b = (,) <$> a <*> b
+equalsIncludingReverse :: (Eq a) => [a] -> [a] -> Bool
+equalsIncludingReverse a b
+    | a == b = True
+    | reverse a == b = True
+    | otherwise = False
 
--- Includes reverse substrings.
-findSubstring :: String -> String -> Maybe Int
-findSubstring search str = findSubstring' search str 0
-    where findSubstring' search str depth
-            | length str < length search = Nothing
-            | search `isPrefixOf` str || reverse search `isPrefixOf` str = Just depth
-            | otherwise = findSubstring' search (tail str) (depth + 1)
-
-countCrosses :: [String] -> [String] -> [(String,String)]
-countCrosses dl dr = filter predicate $ getAllCombinations dl dr
-    where predicate (s1,s2) = not (isNothing match1 && isNothing match2) && match1 == match2
-            where match1 = findSubstring "MAS" s1
-                  match2 = findSubstring "MAS" s2
+countCrosses :: [String] -> Int
+countCrosses strs = length . filter predicate $ map (map2Tuple removePadding) crossPairs
+    where windows = [take (length "MAS") s | s <- tails strs]
+          crossPairs = concatMap (\w -> zip (transpose $ padStrings w) (transpose $ padStringsReverse w)) windows
+          predicate (a,b) = a `equalsIncludingReverse` "MAS" && b `equalsIncludingReverse` "MAS"
 
 main = do
-    contents <- lines <$> readFile "inputs/day4-test.txt"
-    print $ getLeftDiagonals contents
-    print $ getRightDiagonals contents
-    print $ countCrosses (getLeftDiagonals contents) (getRightDiagonals contents)
-    print $ length $ countCrosses (getLeftDiagonals contents) (getRightDiagonals contents)
+    contents <- lines <$> readFile "inputs/day4.txt"
+    print $ countCrosses contents
