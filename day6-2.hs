@@ -27,7 +27,7 @@ stringsToTiles strs = [[charToTile c | c <- row] | row <- strs]
 tilesToStrings :: [[Tile]] -> [String]
 tilesToStrings strs = [[tileToChar t | t <- row] | row <- strs]
     where tileToChar t
-            | isGuard t = directionToArrow $ fromJust . tileToDirection $ t
+            | isGuard t = directionToArrow $ getGuardDirection t
             | isTravelled t = head "X"
             | isObstacle t = head "#"
             | otherwise = head "."
@@ -55,12 +55,14 @@ makeTravelled (Guard d, h) = (Travelled, h ++ [d])
 makeGuard :: Tile -> MovementDirection -> Tile
 makeGuard (_, h) d = (Guard d, h)
 
-getMovementDirection :: [[Tile]] -> MovementDirection
-getMovementDirection strs = head.head.filter (not.null) $ [catMaybes [tileToDirection col | col <- row] | row <- strs]
+getGuard :: [[Tile]] -> Tile
+getGuard m = snd.head.head.filter (not.null) $ [filter fst [(isGuard col, col) | col <- row] | row <- m]
 
-tileToDirection :: Tile -> Maybe MovementDirection
-tileToDirection (Guard d, _) = Just d
-tileToDirection _ = Nothing
+getMovementDirection :: [[Tile]] -> MovementDirection
+getMovementDirection m = getGuardDirection $ getGuard m
+
+getGuardDirection :: Tile -> MovementDirection
+getGuardDirection (Guard d, _) = d
 
 -- Assumes the element is in the list (crash otherwise)
 splitOnPredicate :: Eq a => (a -> Bool) -> [a] -> ([a],a,[a])
@@ -93,11 +95,11 @@ step m
                           moveLeft
                             | null (fst3 sp) = makeTravelled (snd3 sp) : thd3 sp
                             | isObstacle $ last (fst3 sp) = fst3 sp ++ rotateTile (snd3 sp) : thd3 sp
-                            | otherwise = (init . fst3) sp ++ makeGuard (last . fst3 $ sp) (fromJust.tileToDirection $ snd3 sp) : makeTravelled (snd3 sp) : thd3 sp
+                            | otherwise = (init . fst3) sp ++ makeGuard (last . fst3 $ sp) (getGuardDirection $ snd3 sp) : makeTravelled (snd3 sp) : thd3 sp
                           moveRight
                             | null (thd3 sp) = fst3 sp ++ [makeTravelled (snd3 sp)]
                             | isObstacle $ head (thd3 sp) = fst3 sp ++ rotateTile (snd3 sp) : thd3 sp
-                            | otherwise = fst3 sp ++ makeTravelled (snd3 sp) : makeGuard (head . thd3 $ sp) (fromJust.tileToDirection $ snd3 sp) : (tail . thd3) sp
+                            | otherwise = fst3 sp ++ makeTravelled (snd3 sp) : makeGuard (head . thd3 $ sp) (getGuardDirection $ snd3 sp) : (tail . thd3) sp
 
 getFinalBoard :: [[Tile]] -> [[Tile]]
 getFinalBoard m = step.last $ takeWhile (any containsGuard) $ iterate step m
@@ -112,10 +114,10 @@ isIntersection _ = False
 getIntersections :: [[Tile]] -> [Tile]
 getIntersections = concatMap (filter isIntersection)
 
-isLoopableIntersection :: Tile -> Bool
-isLoopableIntersection (_, h) = rotate (h !! 1) == head h
+isInLoop :: [[Tile]] -> Bool
+isInLoop m = True
 
 main = do
     contents <- lines <$> readFile "inputs/day6-test.txt"
     print $ (getIntersections.getFinalBoard.stringsToTiles) contents
-    print $ (length.filter isLoopableIntersection . getIntersections.getFinalBoard.stringsToTiles) contents
+    --print $ (length.filter isLoopableIntersection . getIntersections.getFinalBoard.stringsToTiles) contents
