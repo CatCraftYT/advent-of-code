@@ -1,11 +1,11 @@
 import Data.Bits ( xor )
-import Data.Map.Strict ( Map )
-import Data.Map.Strict qualified as M
+import Data.HashMap.Strict ( HashMap )
+import Data.HashMap.Strict qualified as M
 import Data.Maybe ( isJust, listToMaybe, fromMaybe )
 import Data.List ( isPrefixOf, stripPrefix, zipWith, tails, maximumBy )
 import Data.Function ( on )
 
-type SeqCache = Map [Integer] Integer
+type SeqCache = HashMap [Integer] Integer
 
 evolve :: Integer -> Integer
 evolve = s3 . s2 . s1
@@ -36,7 +36,7 @@ getAllSequences :: [[Integer]] -> [[Integer]]
 getAllSequences = concatMap (filter ((==4).length) . map (take 4) . tails)
 
 solve :: [[Integer]] -> Integer
-solve ps = snd.maximumBy (compare `on` snd) . M.assocs $ seqValues
+solve ps = maximum.M.elems $ seqValues
     where diffs = map diffList ps
           newPrices = map (drop 1) ps
           seqs = getAllSequences diffs
@@ -44,4 +44,4 @@ solve ps = snd.maximumBy (compare `on` snd) . M.assocs $ seqValues
 
 main = do
     contents <- map read . lines <$> readFile "inputs/day22.txt"
-    print $ solve.prices $ contents
+    print $ solve . prices $ contents
