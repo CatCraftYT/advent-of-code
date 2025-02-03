@@ -1,4 +1,4 @@
-import Data.List.Split ( splitOn )
+import Data.List.Extra ( splitOn )
 import Control.Monad ( replicateM )
 import Data.Bifunctor (second)
 

@@ -1,4 +1,4 @@
-import Data.List.Split (splitOn)
+import Data.List.Extra (splitOn)
 
 isIncreasing :: [Int] -> Bool
 isIncreasing [x,y] = x > y

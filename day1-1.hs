@@ -1,5 +1,5 @@
 import Data.List (sort)
-import Data.List.Split (splitOn)
+import Data.List.Extra (splitOn)
 
 calcDistance :: Int -> Int -> Int
 calcDistance a b = abs $ a - b

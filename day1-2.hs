@@ -1,4 +1,4 @@
-import Data.List.Split (splitOn)
+import Data.List.Extra (splitOn)
 
 parseLine :: [String] -> (Int,Int)
 parseLine [s1,s2] = (read s1, read s2)
