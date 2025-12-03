@@ -81,3 +81,6 @@ executable day1-1
 executable day1-2
     import:           day
     main-is:          day1-2.hs
+executable day2-1
+    import:           day
+    main-is:          day2-1.hs
