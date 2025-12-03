@@ -1,4 +1,5 @@
-# Advent of Code
-This repository contains all of my solutions to [Advent of Code](https://adventofcode.com).
-Each year is in its own branch. The first AoC I did was 2024.
-Currently all solutions written in Haskell (cool language!).
+# Advent of Code 2025
+This branch contains all of my solutions to [Advent of Code 2025](https://adventofcode.com). All solutions are written in Haskell. Using Cabal this time (as annoying as it can be)!
+
+# Unsolved
+None so far...
