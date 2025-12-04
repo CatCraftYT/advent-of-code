@@ -63,7 +63,8 @@ common day
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.18.2.1
+    build-depends:    base ^>=4.18.2.1,
+                      containers ^>=0.6.7
 
     -- Directories containing source files.
     hs-source-dirs:   solutions
@@ -93,3 +94,6 @@ executable day3-1
 executable day3-2
     import:           day
     main-is:          day3-2.hs
+executable day4-1
+    import:           day
+    main-is:          day4-1.hs
