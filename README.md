@@ -3,3 +3,4 @@ This branch contains all of my solutions to [Advent of Code 2025](https://advent
 
 # Unsolved
 - Day 3 (part 2)
+- Day 5 (part 2)
