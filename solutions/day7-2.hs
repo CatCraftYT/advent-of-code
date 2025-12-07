@@ -38,13 +38,15 @@ mapToInput = transpose . map (map (tileToChar . snd)) . groupBy (\((x1, _),_) ((
           | t == Splitter = '^'
           | otherwise = error "Invalid tile"
 
-simulate :: TileMap -> TileMap
-simulate initialMap = fst . head . dropWhile (\(m, n) -> Map.member (0,n) m) . iterate (\(m, n) -> (simulate' m n, n+1)) $ (initialMap, 0 :: Int)
-  where simulate' m1 row = foldr moveDown m1 beams
-          where beams = map fst . filter ((==row) . snd . fst) . filter (isTachyonBeam . snd) . Map.toList $ m1
+-- Simulate row by row to the end instead of one step over the entire grid,
+-- otherwise we end up counting the same beam over and over
+simulate :: TileMap -> Int -> TileMap
+simulate initialMap nRows = fst . (!! nRows) . iterate (\(m, n) -> (simulateStep m n, n+1)) $ (initialMap, 0 :: Int)
+  where simulateStep stepMap row = foldr moveDown stepMap beams
+          where beams = map fst . filter ((==row) . snd . fst) . filter (isTachyonBeam . snd) . Map.toList $ stepMap
                 moveDown (x,y) m
                   | isNothing maybeBelow = m
-                  | below == Empty = Map.insertWith combineBeam (x,y+1) here m
+                  | below == Empty = Map.insert (x,y+1) here m
                   | below == Splitter = useSplitter
                   | isTachyonBeam below = Map.insertWith combineBeam (x,y+1) here m
                   | otherwise = error ("Unexpected tile " ++ show below)
@@ -55,10 +57,13 @@ simulate initialMap = fst . head . dropWhile (\(m, n) -> Map.member (0,n) m) . i
                         combineBeam (TachyonBeam n1) (TachyonBeam n2) = TachyonBeam (n1+n2)
                         combineBeam (TachyonBeam n) _ = TachyonBeam n
                         combineBeam _ (TachyonBeam n) = TachyonBeam n
-                        combineBeam _ _ = error "Creating new beam"
+                        combineBeam _ _ = error "Trying to create new beam"
 
+-- Simulate the beam, and keep track of the number of beams
+-- that pass through each position. The total number of beams
+-- that reach the final row is the number of possible paths.
 solve :: [String] -> Int
-solve input = sum . map getNBeams . finalRow $ simulate tileMap
+solve input = sum . map getNBeams . finalRow $ simulate tileMap height
   where height = length input - 1
         tileMap = parseInput input
         finalRow = map snd . filter ((==height) . snd . fst) . Map.toList
@@ -66,5 +71,5 @@ solve input = sum . map getNBeams . finalRow $ simulate tileMap
 main :: IO ()
 main = do
   contents <- lines <$> readFile "inputs/day7.txt"
-  -- putStrLn (intercalate "\n" . mapToInput . simulate . parseInput $ contents)
+  -- putStrLn (intercalate "\n" . mapToInput . flip simulate (length contents - 1) . parseInput $ contents)
   print (solve contents)
