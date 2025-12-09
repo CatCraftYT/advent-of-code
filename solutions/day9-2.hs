@@ -16,6 +16,9 @@ createPolygon vertices = (last vertices, head vertices) : createPolygon' vertice
         createPolygon' (_:_) = []
         createPolygon' [] = []
 
+combinations :: [Vertex] -> [(Vertex,Vertex)]
+combinations points = concat [[(a, b) | a <- points, a /= b && fst b >= fst a] | b <- points]
+
 -- https://en.wikipedia.org/wiki/Point_in_polygon#Ray_casting_algorithm
 -- We can make some simplifications because the lines have integer points,
 -- and are also only perfectly horizontal or vertical.
@@ -30,27 +33,35 @@ insidePolygon (vx,vy) p
   where betweenExclusive x (a,b) = (x > a && x < b) || (x > b && x < a)
         betweenInclusive x (a,b) = (x >= a && x <= b) || (x >= b && x <= a)
 
-combinations :: [Vertex] -> [(Vertex,Vertex)]
-combinations points = concat [[(a, b) | a <- points, a /= b && fst b >= fst a] | b <- points]
-
 rectangleSize :: (Vertex,Vertex) -> Integer
 rectangleSize (a,b) = (abs (fst b - fst a) + 1) * (abs (snd b - snd a) + 1)
 
 rectanglePoints :: (Vertex,Vertex) -> [Vertex]
-rectanglePoints (v1@(x1,y1), v2@(x2,y2)) = [v1, v2, (x1, y2), (x2, y1)]
+rectanglePoints (v1@(x1,y1), v2@(x2,y2)) = [v1, (x1, y2), v2, (x2, y1)]
 
--- The given points form a polygon. For every pair of points,
--- we calculate the corners of the rectangle formed from them,
--- then determine if *all* of the corners are within the polygon.
+pointsAlongEdge :: Edge -> [Vertex]
+pointsAlongEdge ((x1, y1), (x2, y2))
+  | x1 == x2 = zip (repeat x1) [minY..maxY]
+  | y1 == y2 = zip [minX..maxX] (repeat y1)
+  | otherwise = error "Line must be horizontal or vertical"
+  where maxX = max x1 x2
+        maxY = max y1 y2
+        minX = min x1 x2
+        minY = min y1 y2
+
+-- The given points form a simple polygon. For every pair of points, we
+-- calculate the points along the perimeter of the rectangle formed from them,
+-- then determine if all of the points along the perimeter are within the polygon.
 -- If they are, then the rectangle itself is within the polygon,
--- so it is valid.
+-- so it is valid. Not sure if there is a name for this property, or if it
+-- is actually true in general, but it seems to work.
 solve :: [Vertex] -> Integer
 solve vertices = maximum . map rectangleSize . filter validRectangle . combinations $ vertices
   where polygon = createPolygon vertices
-        validRectangle = all (`insidePolygon` polygon) . rectanglePoints
+        validRectangle = all (all (`insidePolygon` polygon) . pointsAlongEdge) . createPolygon . rectanglePoints
 
 main :: IO ()
 main = do
-  contents <- lines <$> readFile "inputs/day9-test.txt"
+  contents <- lines <$> readFile "inputs/day9.txt"
   -- print (combinations . parseInput $ contents)
   print (solve . parseInput $ contents)
