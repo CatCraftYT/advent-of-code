@@ -131,3 +131,4 @@ executable day9-2
     import:           day
     main-is:          day9-2.hs
     build-depends:    parallel ^>=3.2.2.0
+    ghc-options:      -threaded
