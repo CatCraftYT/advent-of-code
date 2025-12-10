@@ -1,7 +1,9 @@
 module Main where
 import Data.Bifunctor
+import Data.List
+import Data.Ord
 
-type Vertex = (Integer,Integer)
+type Vertex = (Int,Int)
 type Edge = (Vertex, Vertex)
 type Polygon = [Edge]
 
@@ -33,7 +35,7 @@ insidePolygon (vx,vy) p
   where betweenExclusive x (a,b) = (x > a && x < b) || (x > b && x < a)
         betweenInclusive x (a,b) = (x >= a && x <= b) || (x >= b && x <= a)
 
-rectangleSize :: (Vertex,Vertex) -> Integer
+rectangleSize :: (Vertex,Vertex) -> Int
 rectangleSize (a,b) = (abs (fst b - fst a) + 1) * (abs (snd b - snd a) + 1)
 
 rectanglePoints :: (Vertex,Vertex) -> [Vertex]
@@ -55,13 +57,17 @@ pointsAlongEdge ((x1, y1), (x2, y2))
 -- If they are, then the rectangle itself is within the polygon,
 -- so it is valid. Not sure if there is a name for this property, or if it
 -- is actually true in general, but it seems to work.
-solve :: [Vertex] -> Integer
-solve vertices = maximum . map rectangleSize . filter validRectangle . combinations $ vertices
+-- Also, rather than computing all valid rectangles then picking the maximum,
+-- find and order all the largest rectangles, then pick the first valid one.
+solve :: [Vertex] -> Int
+solve vertices = rectangleSize . head . filter validRectangle . sortOn (Data.Ord.Down . rectangleSize) . combinations $ vertices
   where polygon = createPolygon vertices
-        validRectangle = all (all (`insidePolygon` polygon) . pointsAlongEdge) . createPolygon . rectanglePoints
+        -- Check corners first since they are furthest apart
+        validRectangle r = all (`insidePolygon` polygon) corners && all (all (`insidePolygon` polygon) . pointsAlongEdge) (createPolygon corners)
+          where corners = rectanglePoints r
 
 main :: IO ()
 main = do
   contents <- lines <$> readFile "inputs/day9.txt"
-  -- print (combinations . parseInput $ contents)
+  -- print (length . combinations . parseInput $ contents)
   print (solve . parseInput $ contents)
