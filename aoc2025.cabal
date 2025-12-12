@@ -135,3 +135,7 @@ executable day9-2
 executable day11-1
     import:           day
     main-is:          day11-1.hs
+executable day11-2
+    import:           day
+    main-is:          day11-2.hs
+    build-depends:    mtl ^>= 2.3.1
