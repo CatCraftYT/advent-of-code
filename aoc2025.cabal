@@ -131,7 +131,10 @@ executable day9-2
     import:           day
     main-is:          day9-2.hs
     build-depends:    parallel ^>=3.2.2.0
-    ghc-options:      -threaded
+executable day10-1
+    import:           day
+    main-is:          day10-1.hs
+    build-depends:    array ^>=0.5.6.0
 executable day11-1
     import:           day
     main-is:          day11-1.hs
