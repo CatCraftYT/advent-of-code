@@ -13,7 +13,7 @@ testMatrix = array ((0,0),(2,2)) [((0,0),1),((0,1),2),((0,2),3),((1,0),4),((1,1)
 zeroMatrix :: Int -> Int -> Matrix
 zeroMatrix m n = array ((0,0),(m-1,n-1)) . concat $ [[((i,j),0) | j <- [0..n-1]] | i <- [0..m-1]]
 
-rows :: Matrix -> [[((Int,Int), Float)]]
+rows :: Array (Int,Int) a -> [[((Int,Int), a)]]
 rows = groupBy (\a b -> (fst.fst) a == (fst.fst) b) . assocs
 
 matmul :: Matrix -> Matrix -> Matrix
@@ -28,7 +28,7 @@ matmul matrix1 matrix2
         cols2 = transpose . map (map snd) . rows $ matrix2
 
 -- A mess of a function but it does quite prettily print a matrix
-showMatrix :: Matrix -> IO ()
+showMatrix :: Show a => Array (Int,Int) a -> IO ()
 showMatrix = putStrLn . (++"|") . intercalate "|\n" . map (('|':) . intercalate "  ") . transpose . map ((\col -> map (padToLength (maxLength col)) col) . map (show . snd)) . transpose . rows
   where maxLength = maximum . map length
         padToLength l s = replicate (l - length s) ' ' ++ s
@@ -62,7 +62,7 @@ rref = rref' 0 0
                 -- The above source says to do this only when pv>0,
                 -- but that makes no sense... doing it all the time
                 -- seems to give the correct result, and doing it
-                -- by the book gives the incorrect result.
+                -- by the book gives an incorrect result.
                 pivotSwap = swapRows p r matrix
                 scalePivot = mulRow (1/pv) r pivotSwap
                 elimination = foldr id scalePivot [addRow (-(scalePivot!(r',c))) r r' | r' <- [0..m], r' /= r]
@@ -82,10 +82,48 @@ solutions matrix = solutionMatrix
         freeVariables = map (snd . fst . head) . filter ((>1) . sum . map (abs . snd)) . transpose . rows $ reduced
         solutionMatrix = zeroMatrix (nVariables+1) (length freeVariables)
 
+genPoints :: Int -> Int -> [[Int]]
+genPoints 0 _ = [[]]
+genPoints dimension range1 = concatMap (\vs -> map (:vs) ints) (genPoints (dimension-1) range1)
+  where ints = [-range1..range1]
+
+-- From day 6
+splitOn :: Char -> String -> [String]
+splitOn _ [] = []
+splitOn c s
+  | null post = [pre]
+  | otherwise = pre : splitOn c (tail post)
+  where (pre, post) = break (==c) s
+
+parseInput :: [String] -> [Matrix]
+parseInput = map parseLine
+  where parseLine :: String -> Matrix
+        parseLine line = matrix
+                         // concat [[((i,j),row) | (row, i) <- zip col [0..]] | (col, j) <- zip buttonCols [0..]]
+                         // [((i, nButtons), row) | (row, i) <- zip lights [0..]]
+          where (lights, postLights) = first (map lightToMatrix . filter (`elem` "#.")) . break (==' ') $ line
+                (buttons, _) = first (map (map read . splitOn ',') . splitOn ' ' . init . filter (`notElem` "()")) . break (=='{') . tail $ postLights
+                buttonCols = map buttonToList buttons
+                nLights = length lights
+                nButtons = length buttons
+                matrix = zeroMatrix nLights (nButtons + 1)
+                lightToMatrix c
+                  | c == '#' = -1.0
+                  | c == '.' = -2.0
+                  | otherwise = error "Unexpected char in lights"
+                buttonToList b = map (\i -> if i `elem` b then 1 else 0) [0..nLights-1]
+
 solve :: [String] -> Int
-solve = const 0
+solve = sum . map solveMatrix . parseInput
+  where listToVector l = listArray ((0,0), (length l - 1,0)) l
+        solveMatrix :: Matrix -> Int
+        solveMatrix matrix = minimum . map (sum . init . elems) . filter (not . all (==0)) $ solutionSpace
+          where (_,(_,n)) = bounds solutionMatrix
+                solutionMatrix = solutions matrix
+                solutionSpace = filter (all (>=0)) . map (fmap ((`mod` 2) . round) . matmul solutionMatrix) $ points
+                points = map (listToVector . map fromIntegral) $ genPoints (n+1) 5
 
 main :: IO ()
 main = do
-  contents <- lines <$> readFile "inputs/day10.txt"
+  contents <- lines <$> readFile "inputs/day10-test.txt"
   print (solve contents)
