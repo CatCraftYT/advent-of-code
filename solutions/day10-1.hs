@@ -3,9 +3,10 @@ import Data.Array
 import Data.List
 import Data.Bifunctor
 import Data.Ord
+import Data.Ratio
 
 -- Index is (i,j), matrix array is flat
-type Matrix = Array (Int,Int) Float
+type Matrix = Array (Int,Int) Rational
 
 testMatrix :: Matrix
 testMatrix = array ((0,0),(2,2)) [((0,0),1),((0,1),2),((0,2),3),((1,0),4),((1,1),5),((1,2),6),((2,0),7),((2,1),8),((2,2),9)]
@@ -37,11 +38,11 @@ swapRows :: Int -> Int -> Matrix -> Matrix
 swapRows i j m = m // map (\((_,k),x) -> ((j,k),x)) iRow // map (\((_,k),x) -> ((i,k),x)) jRow
   where iRow = filter ((==i) . fst . fst) . assocs $ m
         jRow = filter ((==j) . fst . fst) . assocs $ m
-addRow :: Float -> Int -> Int -> Matrix -> Matrix
+addRow :: Rational -> Int -> Int -> Matrix -> Matrix
 addRow mult i j m = m // zipWith (\ix -> second (+(ix*mult))) iRow jRow
   where iRow = map snd . filter ((==i) . fst . fst) . assocs $ m
         jRow = filter ((==j) . fst . fst) . assocs $ m
-mulRow :: Float -> Int -> Matrix -> Matrix
+mulRow :: Rational -> Int -> Matrix -> Matrix
 mulRow mult i m = m // map (second (*mult)) iRow
   where iRow = filter ((==i) . fst . fst) . assocs $ m
 
@@ -113,14 +114,17 @@ parseInput = map parseLine
                   | otherwise = error "Unexpected char in lights"
                 buttonToList b = map (\i -> if i `elem` b then 1 else 0) [0..nLights-1]
 
-solve :: [String] -> Int
+solve :: [String] -> Integer
 solve = sum . map solveMatrix . parseInput
   where listToVector l = listArray ((0,0), (length l - 1,0)) l
-        solveMatrix :: Matrix -> Int
-        solveMatrix matrix = minimum . map (sum . init . elems) . filter (not . all (==0)) $ solutionSpace
+        isRound x = denominator x == 1
+        solveMatrix :: Matrix -> Integer
+        solveMatrix matrix
+          | null solutionMatrix = toInteger . snd . fst . bounds $ matrix
+          | otherwise = minimum . map (sum . init . elems) . filter (not . all (==0)) $ solutionSpace
           where (_,(_,n)) = bounds solutionMatrix
                 solutionMatrix = solutions matrix
-                solutionSpace = filter (all (>=0)) . map (fmap ((`mod` 2) . round) . matmul solutionMatrix) $ points
+                solutionSpace = filter (all (>=0)) . map (fmap ((`mod` 2) . numerator)) . filter (all isRound) . map (matmul solutionMatrix) $ points
                 points = map (listToVector . map fromIntegral) $ genPoints (n+1) 5
 
 main :: IO ()
