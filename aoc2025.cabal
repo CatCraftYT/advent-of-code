@@ -134,6 +134,9 @@ executable day9-2
 executable day10-1
     import:           day
     main-is:          day10-1.hs
+executable day10-2
+    import:           day
+    main-is:          day10-2.hs
     build-depends:    array ^>=0.5.6.0
 executable day11-1
     import:           day
