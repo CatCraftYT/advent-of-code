@@ -4,6 +4,7 @@ import Data.List
 import Data.Bifunctor
 import Data.Ord
 import Data.Ratio
+import Data.Either
 
 -- Index is (i,j), matrix array is flat
 type Matrix = Array (Int,Int) Rational
@@ -16,6 +17,9 @@ zeroMatrix m n = array ((0,0),(m-1,n-1)) . concat $ [[((i,j),0) | j <- [0..n-1]]
 
 rows :: Array (Int,Int) a -> [[((Int,Int), a)]]
 rows = groupBy (\a b -> (fst.fst) a == (fst.fst) b) . assocs
+
+listToVector :: [Rational] -> Matrix
+listToVector l = listArray ((0,0), (length l - 1,0)) l
 
 matmul :: Matrix -> Matrix -> Matrix
 matmul matrix1 matrix2
@@ -68,20 +72,28 @@ rref = rref' 0 0
                 scalePivot = mulRow (1/pv) r pivotSwap
                 elimination = foldr id scalePivot [addRow (-(scalePivot!(r',c))) r r' | r' <- [0..m], r' /= r]
 
--- Solves a homogeneous linear system by finding the pivot and free columns,
+-- Solves a linear system by finding the pivot and free columns,
 -- going through each row, getting all of the free variable coefficients,
 -- and putting them in the solution matrix row corresponding to the pivot
 -- on that row.
 -- Returns the solution vectors as matrix columns.
-solutions :: Matrix -> Matrix
-solutions matrix = solutionMatrix
-                  // zipWith (\var v -> ((var,v),1)) freeVariables [0..]   -- 1s in free variable places
-                  // concat (zipWith (\pivot row -> zipWith (\var v -> ((pivot,v), -(reduced!(row,var)))) freeVariables [0..]) pivots [0..])   -- free variable coefficients
+--  - Left if there is a single solution (nx1 matrix)
+--  - Right if there are infinitely many solutions. The tuple contains the
+--    solution matrix and the constant column.
+solutions :: Matrix -> Either Matrix (Matrix,Matrix)
+solutions matrix
+  | null freeVariables = Left (listToVector constantCol)
+  | otherwise = Right (solutionMatrix
+                // zipWith (\var v -> ((var,v),1)) freeVariables [0..]   -- 1s in free variable places
+                // concat (zipWith (\pivot row -> zipWith (\var v -> ((pivot,v), -(reduced!(row,var)))) freeVariables [0..]) pivots [0..])   -- free variable coefficients
+                ,  listToVector constantCol)
   where reduced = rref matrix
         (_,(_,nVariables)) = bounds matrix
-        pivots = map (snd . fst . head) . filter ((==1) . sum . map (abs . snd)) . transpose . rows $ reduced
-        freeVariables = map (snd . fst . head) . filter ((>1) . sum . map (abs . snd)) . transpose . rows $ reduced
-        solutionMatrix = zeroMatrix (nVariables+1) (length freeVariables)
+        pivots = map (snd . fst . head) . filter ((==1) . sum . map (abs . snd)) . transpose $ coefficientRows
+        freeVariables = map (snd . fst . head) . filter ((>1) . sum . map (abs . snd)) . transpose $ coefficientRows
+        coefficientRows = map init . rows $ reduced
+        constantCol = map (snd . last) . rows $ reduced
+        solutionMatrix = zeroMatrix nVariables (length freeVariables + 1)
 
 genPoints :: Int -> Int -> [[Int]]
 genPoints 0 _ = [[]]
@@ -101,33 +113,36 @@ parseInput = map parseLine
   where parseLine :: String -> Matrix
         parseLine line = matrix
                          // concat [[((i,j),row) | (row, i) <- zip col [0..]] | (col, j) <- zip buttonCols [0..]]
-                         // [((i, nButtons), row) | (row, i) <- zip lights [0..]]
+                         // [((i, nButtons), 2) | i <- [0..nLights-1]]
+                         // [((i, nButtons+1), row) | (row, i) <- zip lights [0..]]
           where (lights, postLights) = first (map lightToMatrix . filter (`elem` "#.")) . break (==' ') $ line
                 (buttons, _) = first (map (map read . splitOn ',') . splitOn ' ' . init . filter (`notElem` "()")) . break (=='{') . tail $ postLights
                 buttonCols = map buttonToList buttons
                 nLights = length lights
                 nButtons = length buttons
-                matrix = zeroMatrix nLights (nButtons + 1)
+                matrix = zeroMatrix nLights (nButtons + 2)
                 lightToMatrix c
-                  | c == '#' = -1.0
-                  | c == '.' = -2.0
+                  | c == '#' = 1 % 1
+                  | c == '.' = 0 % 1
                   | otherwise = error "Unexpected char in lights"
                 buttonToList b = map (\i -> if i `elem` b then 1 else 0) [0..nLights-1]
 
 solve :: [String] -> Integer
 solve = sum . map solveMatrix . parseInput
-  where listToVector l = listArray ((0,0), (length l - 1,0)) l
-        isRound x = denominator x == 1
+  where isRound x = denominator x == 1
         solveMatrix :: Matrix -> Integer
         solveMatrix matrix
-          | null solutionMatrix = toInteger . snd . fst . bounds $ matrix
-          | otherwise = minimum . map (sum . init . elems) . filter (not . all (==0)) $ solutionSpace
-          where (_,(_,n)) = bounds solutionMatrix
+          | isLeft solutionMatrix = sum . map ((`mod` 2) . numerator) . init . elems . fromLeft undefined $ solutionMatrix
+          | null solutionSpace = error (show matrix)
+          | otherwise = minimum . map ((+constantSum) . sum . init . elems) . filter (not . all (==0)) $ solutionSpace
+          where (_,(_,n)) = bounds freeSolutionMatrix
                 solutionMatrix = solutions matrix
-                solutionSpace = filter (all (>=0)) . map (fmap ((`mod` 2) . numerator)) . filter (all isRound) . map (matmul solutionMatrix) $ points
+                (freeSolutionMatrix, constantCol) = fromRight undefined solutionMatrix
+                constantSum = sum . init . elems . fmap ((`mod` 2) . numerator) $ constantCol
+                solutionSpace = map (fmap ((`mod` 2) . numerator)) . filter (all isRound) . map (matmul freeSolutionMatrix) $ points
                 points = map (listToVector . map fromIntegral) $ genPoints (n+1) 5
 
 main :: IO ()
 main = do
-  contents <- lines <$> readFile "inputs/day10-test.txt"
+  contents <- lines <$> readFile "inputs/day10.txt"
   print (solve contents)
